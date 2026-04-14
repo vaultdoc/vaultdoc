@@ -7,6 +7,7 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { ipAllowlist, apiKeyAuth, adminKeyAuth } from "./middleware/auth.js";
 import { registerDocTools } from "./tools/docs.js";
 import { registerDevOpsTools } from "./tools/devops.js";
+import { registerIngestTools } from "./tools/ingest.js";
 import { ensureDocsDir } from "./services/storage.js";
 import { initKeyStore, listKeyNames, addKey, removeKey } from "./services/keyStore.js";
 
@@ -84,6 +85,7 @@ async function main() {
     const server = new McpServer({ name: "vaultdoc", version: "0.1.0" });
     registerDocTools(server);
     registerDevOpsTools(server);
+    registerIngestTools(server);
 
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
@@ -97,6 +99,7 @@ async function main() {
     const server = new McpServer({ name: "vaultdoc", version: "0.1.0" });
     registerDocTools(server);
     registerDevOpsTools(server);
+    registerIngestTools(server);
 
     const transport = new SSEServerTransport("/messages", res);
     sseSessions.set(transport.sessionId, { server, transport });

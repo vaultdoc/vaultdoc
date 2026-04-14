@@ -2,6 +2,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as storage from "../services/storage.js";
 import { notifyDocUpdated } from "../services/slack.js";
+import { registerIngestTools } from "../tools/ingest.js";
 
 const CATEGORY = z.enum([
   "runbook", "architecture", "onboarding", "incident",
@@ -83,4 +84,6 @@ export function registerCloudTools(server: McpServer, workspaceId: string) {
     const lines = all.map((d) => `- [${d.category}] **${d.title}** (\`${d.path}\`)`);
     return { content: [{ type: "text", text: `## DevOps Docs\n\n${lines.join("\n")}\n\nUse \`get_doc\` to read a specific document.` }] };
   });
+
+  registerIngestTools(server);
 }

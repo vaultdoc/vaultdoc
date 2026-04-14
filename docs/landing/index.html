@@ -310,6 +310,7 @@
     }
     .tag-docs { background: rgba(88,166,255,0.1); color: var(--accent); }
     .tag-devops { background: rgba(63,185,80,0.1); color: var(--green); }
+    .tag-ingest { background: rgba(188,140,255,0.1); color: var(--purple); }
 
     /* ── Quickstart ── */
     .steps { display: flex; flex-direction: column; gap: 2.5rem; }
@@ -459,9 +460,9 @@
   <div class="inner">
     <img src="logo-wordmark.svg" alt="vaultdoc" height="34" style="display:block;" />
     <div class="nav-links">
-      <a href="#how-it-works" class="hide-sm">How it works</a>
       <a href="#tools" class="hide-sm">Tools</a>
       <a href="#quickstart" class="hide-sm">Quickstart</a>
+      <a href="#seed" class="hide-sm">Seed</a>
       <a href="https://github.com/vaultdoc/vaultdoc" class="btn btn-outline">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         GitHub
@@ -622,6 +623,16 @@
         <code>get_incident_docs</code>
         <span class="tool-desc">Retrieve all post-mortems and incident documentation</span>
         <span class="tool-tag tag-devops">devops</span>
+      </div>
+      <div class="tool-row">
+        <code>ingest_repo</code>
+        <span class="tool-desc">Fetch a full content digest of a GitHub repo (file tree + contents) — use as context to generate docs</span>
+        <span class="tool-tag tag-ingest">seed</span>
+      </div>
+      <div class="tool-row">
+        <code>ingest_org</code>
+        <span class="tool-desc">Overview of all repos in a GitHub org — descriptions, languages, README excerpts — for onboarding docs</span>
+        <span class="tool-tag tag-ingest">seed</span>
       </div>
     </div>
   </div>
@@ -817,6 +828,57 @@ cd vaultdoc && cp .env.example .env</pre>
         </div>
       </div>
 
+    </div>
+  </div>
+</section>
+
+<!-- ── Seed from GitHub ── -->
+<section id="seed">
+  <div class="container">
+    <div class="section-header">
+      <h2>Seed docs from your GitHub org</h2>
+      <p class="section-sub">Point your agent at a repo or org — it reads the code and writes the docs.</p>
+    </div>
+
+    <div class="features" style="margin-bottom:2rem;">
+      <div class="feature">
+        <div class="feat-icon purple">🏢</div>
+        <h3>Onboard from your org</h3>
+        <p>Call <code>ingest_org mycompany</code> — the agent gets READMEs and metadata for every repo, then writes an onboarding guide and services catalogue.</p>
+      </div>
+      <div class="feature">
+        <div class="feat-icon blue">📦</div>
+        <h3>Deep-dive a single repo</h3>
+        <p>Call <code>ingest_repo mycompany/api-gateway</code> — the agent gets the full file tree and key source files, then writes runbooks, architecture docs, and deploy guides.</p>
+      </div>
+      <div class="feature">
+        <div class="feat-icon green">🔄</div>
+        <h3>Re-sync after big merges</h3>
+        <p>Re-ingest a repo after major changes. The agent diffs against existing docs and calls <code>save_doc</code> only where things actually changed.</p>
+      </div>
+    </div>
+
+    <div class="section-header" style="margin-bottom:1rem;">
+      <p class="section-sub">Example: ask your agent in natural language</p>
+    </div>
+    <div class="terminal-header">
+      <span class="t-dot t-red"></span><span class="t-dot t-yellow"></span><span class="t-dot t-green"></span>
+      <span class="t-title">Claude Code / Cursor / any agent</span>
+    </div>
+    <pre class="terminal"><span class="c"># Seed an entire org</span>
+Ingest the GitHub org "acme-corp" and create:
+ - An onboarding guide listing all services
+ - An architecture overview doc
+ - A services catalogue with descriptions
+
+<span class="c"># Deep-dive a repo</span>
+Ingest github.com/acme-corp/payments-service and generate:
+ - A runbook for on-call engineers
+ - A deployment guide
+ - An architecture doc describing the service boundaries</pre>
+
+    <div style="margin-top:1.25rem; padding:1rem 1.25rem; background:rgba(88,166,255,0.05); border:1px solid rgba(88,166,255,0.15); border-radius:8px; font-size:0.85rem; color:var(--muted2); line-height:1.6;">
+      <strong style="color:var(--text);">Private repos?</strong> Pass your GitHub token: the agent will include it in the <code>ingest_repo</code> call. Tokens are never stored — only used for the duration of the API call.
     </div>
   </div>
 </section>
