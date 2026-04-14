@@ -1,14 +1,15 @@
 {
-  "name": "team-docs-mcp",
+  "name": "vaultdoc",
   "version": "0.1.0",
-  "description": "MCP server for team documentation management with AI-powered updates and Slack notifications",
+  "description": "MCP server for AI-powered team documentation — self-hosted, secure, with Slack notifications",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/server.ts",
+    "dev:cloud": "tsx watch src/cloud/server.ts",
     "start": "node dist/server.js",
-    "lint": "eslint src --ext .ts",
+    "start:cloud": "node dist/cloud/server.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -19,10 +20,12 @@
     "express-rate-limit": "^7.4.1",
     "glob": "^11.0.1",
     "gray-matter": "^4.0.3",
+    "jsonwebtoken": "^9.0.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.14.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3"

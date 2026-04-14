@@ -1,0 +1,23 @@
+services:
+  vaultdoc-cloud:
+    build: .
+    command: ["node", "dist/cloud/server.js"]
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_KEY=${ADMIN_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - TEAM_NAME=${TEAM_NAME:-}
+    volumes:
+      - vaultdoc_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  vaultdoc_data:

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="vaultGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#58a6ff"/>
+      <stop offset="100%" stop-color="#1f6feb"/>
+    </linearGradient>
+    <linearGradient id="docGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e6edf3"/>
+      <stop offset="100%" stop-color="#8b949e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Vault circle body -->
+  <circle cx="100" cy="100" r="72" fill="url(#vaultGrad)" opacity="0.15"/>
+  <circle cx="100" cy="100" r="72" stroke="url(#vaultGrad)" stroke-width="3"/>
+
+  <!-- Inner vault ring -->
+  <circle cx="100" cy="100" r="52" stroke="#58a6ff" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Vault door bolts (4 corners) -->
+  <circle cx="100" cy="53"  r="4" fill="#58a6ff" opacity="0.7"/>
+  <circle cx="100" cy="147" r="4" fill="#58a6ff" opacity="0.7"/>
+  <circle cx="53"  cy="100" r="4" fill="#58a6ff" opacity="0.7"/>
+  <circle cx="147" cy="100" r="4" fill="#58a6ff" opacity="0.7"/>
+
+  <!-- Document shape (centered) -->
+  <rect x="77" y="68" width="38" height="48" rx="3" fill="#0d1117" stroke="url(#docGrad)" stroke-width="1.5"/>
+  <!-- Folded corner -->
+  <polyline points="103,68 115,80 103,80" fill="#161b22" stroke="#8b949e" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Doc lines -->
+  <line x1="84" y1="88"  x2="108" y2="88"  stroke="#58a6ff" stroke-width="2"   stroke-linecap="round"/>
+  <line x1="84" y1="97"  x2="108" y2="97"  stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  <line x1="84" y1="106" x2="98"  y2="106" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- Vault handle (right side) -->
+  <circle cx="142" cy="100" r="8" stroke="#58a6ff" stroke-width="2" fill="none"/>
+  <line x1="146" y1="100" x2="154" y2="100" stroke="#58a6ff" stroke-width="2" stroke-linecap="round"/>
+</svg>

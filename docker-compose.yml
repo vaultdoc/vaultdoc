@@ -1,0 +1,23 @@
+services:
+  team-docs-mcp:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_KEY=${ADMIN_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - SLACK_CHANNEL=${SLACK_CHANNEL:-#team-docs}
+      - TEAM_NAME=${TEAM_NAME:-Engineering Team}
+      - ALLOWED_IPS=${ALLOWED_IPS:-}
+    volumes:
+      - docs_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  docs_data:
