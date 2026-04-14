@@ -1,8 +1,9 @@
 import "node:process";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { jwtAuth, issueToken } from "./auth.js";
 import { registerCloudTools } from "./mcpTools.js";
 import { createWorkspace, getWorkspace, listWorkspaces, deleteWorkspace } from "./workspaces.js";
@@ -10,6 +11,16 @@ import { adminKeyAuth } from "../middleware/auth.js";
 import { ensureDocsDir } from "../services/storage.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
+
+function mcpCors(req: Request, res: Response, next: NextFunction) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Mcp-Session-Id");
+  if (req.method === "OPTIONS") { res.sendStatus(204); return; }
+  next();
+}
+
+const sseSessions = new Map<string, { server: McpServer; transport: SSEServerTransport; workspaceId: string }>();
 
 async function main() {
   await ensureDocsDir();
@@ -60,10 +71,10 @@ async function main() {
     res.status(201).json({ token });
   });
 
-  // ── MCP endpoint — JWT scoped to workspace ─────────────────────────────────
-  app.post("/mcp", jwtAuth, async (req, res) => {
+  // ── MCP endpoints — JWT scoped to workspace ───────────────────────────────
+  // Streamable HTTP (modern clients)
+  app.all("/mcp", mcpCors, jwtAuth, async (req, res) => {
     const { workspaceId } = req.workspace!;
-
     const workspace = await getWorkspace(workspaceId);
     if (!workspace) { res.status(403).json({ error: "Workspace not found" }); return; }
 
@@ -71,10 +82,37 @@ async function main() {
     registerCloudTools(server, workspaceId);
 
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-
     res.on("close", () => { transport.close(); server.close(); });
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
+  });
+
+  // SSE legacy transport (older clients)
+  app.get("/sse", mcpCors, jwtAuth, async (req, res) => {
+    const { workspaceId } = req.workspace!;
+    const workspace = await getWorkspace(workspaceId);
+    if (!workspace) { res.status(403).json({ error: "Workspace not found" }); return; }
+
+    const server = new McpServer({ name: "vaultdoc-cloud", version: "0.1.0" });
+    registerCloudTools(server, workspaceId);
+
+    const transport = new SSEServerTransport("/messages", res);
+    sseSessions.set(transport.sessionId, { server, transport, workspaceId });
+
+    res.on("close", () => {
+      sseSessions.delete(transport.sessionId);
+      transport.close();
+      server.close();
+    });
+
+    await server.connect(transport);
+  });
+
+  app.post("/messages", mcpCors, jwtAuth, async (req, res) => {
+    const sessionId = req.query["sessionId"] as string;
+    const session = sseSessions.get(sessionId);
+    if (!session) { res.status(404).json({ error: "Session not found" }); return; }
+    await session.transport.handlePostMessage(req, res, req.body);
   });
 
   app.listen(PORT, "0.0.0.0", () => {

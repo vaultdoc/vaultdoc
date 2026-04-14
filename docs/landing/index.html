@@ -409,6 +409,37 @@
     .footer-right a, .footer-left a { font-size: 0.85rem; color: var(--muted); }
     .footer-right a:hover, .footer-left a:hover { color: var(--text); text-decoration: none; }
 
+    /* ── Agent tabs ── */
+    .agent-tabs { margin-top: 0.75rem; }
+    .agent-tab-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-bottom: 0;
+      border-bottom: 1px solid var(--border2);
+      padding-bottom: 0;
+    }
+    .agent-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted2);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .agent-tab:hover { color: var(--text); }
+    .agent-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .agent-tab-panel { display: none; }
+    .agent-tab-panel.active { display: block; }
+    .agent-tab-panel pre { border-radius: 0 8px 8px 8px; }
+    .agent-tab-panel .terminal-header { border-radius: 0 8px 0 0; }
+
     /* ── Responsive ── */
     @media (max-width: 640px) {
       .nav-links .hide-sm { display: none; }
@@ -578,8 +609,18 @@
         <span class="tool-tag tag-devops">devops</span>
       </div>
       <div class="tool-row">
+        <code>list_runbooks</code>
+        <span class="tool-desc">List all runbooks at a glance</span>
+        <span class="tool-tag tag-devops">devops</span>
+      </div>
+      <div class="tool-row">
         <code>get_devops_context</code>
         <span class="tool-desc">Load all DevOps, architecture, and runbook summaries at once</span>
+        <span class="tool-tag tag-devops">devops</span>
+      </div>
+      <div class="tool-row">
+        <code>get_incident_docs</code>
+        <span class="tool-desc">Retrieve all post-mortems and incident documentation</span>
         <span class="tool-tag tag-devops">devops</span>
       </div>
     </div>
@@ -663,25 +704,116 @@ cd vaultdoc && cp .env.example .env</pre>
       <div class="step">
         <div class="step-num">5</div>
         <div>
-          <h3>Connect Claude Code</h3>
-          <p>Add to <code>~/.claude/settings.json</code> (or your Cursor MCP config):</p>
-          <div class="terminal-header">
-            <span class="t-dot t-red"></span>
-            <span class="t-dot t-yellow"></span>
-            <span class="t-dot t-green"></span>
-            <span class="t-title">~/.claude/settings.json</span>
-          </div>
-          <pre class="terminal">{
+          <h3>Connect your agent</h3>
+          <p>Pick your tool below — all use the same <code>/mcp</code> endpoint.</p>
+          <div class="agent-tabs">
+            <div class="agent-tab-list" role="tablist">
+              <button class="agent-tab active" onclick="showTab(this,'tab-claude')" role="tab">Claude Code</button>
+              <button class="agent-tab" onclick="showTab(this,'tab-cursor')" role="tab">Cursor</button>
+              <button class="agent-tab" onclick="showTab(this,'tab-windsurf')" role="tab">Windsurf</button>
+              <button class="agent-tab" onclick="showTab(this,'tab-opencode')" role="tab">OpenCode</button>
+              <button class="agent-tab" onclick="showTab(this,'tab-codex')" role="tab">Codex CLI</button>
+              <button class="agent-tab" onclick="showTab(this,'tab-continue')" role="tab">Continue.dev</button>
+            </div>
+
+            <div id="tab-claude" class="agent-tab-panel active">
+              <div class="terminal-header">
+                <span class="t-dot t-red"></span><span class="t-dot t-yellow"></span><span class="t-dot t-green"></span>
+                <span class="t-title">~/.claude/settings.json</span>
+              </div>
+              <pre class="terminal">{
   <span class="k">"mcpServers"</span>: {
     <span class="k">"team-docs"</span>: {
       <span class="k">"type"</span>: <span class="s">"http"</span>,
       <span class="k">"url"</span>:  <span class="s">"http://YOUR_SERVER:3000/mcp"</span>,
-      <span class="k">"headers"</span>: {
-        <span class="k">"Authorization"</span>: <span class="s">"Bearer sk-mcp-my-secret"</span>
-      }
+      <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"Bearer YOUR_KEY"</span> }
     }
   }
 }</pre>
+            </div>
+
+            <div id="tab-cursor" class="agent-tab-panel">
+              <div class="terminal-header">
+                <span class="t-dot t-red"></span><span class="t-dot t-yellow"></span><span class="t-dot t-green"></span>
+                <span class="t-title">Cursor → Settings → MCP</span>
+              </div>
+              <pre class="terminal">{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"team-docs"</span>: {
+      <span class="k">"url"</span>:  <span class="s">"http://YOUR_SERVER:3000/mcp"</span>,
+      <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"Bearer YOUR_KEY"</span> }
+    }
+  }
+}</pre>
+            </div>
+
+            <div id="tab-windsurf" class="agent-tab-panel">
+              <div class="terminal-header">
+                <span class="t-dot t-red"></span><span class="t-dot t-yellow"></span><span class="t-dot t-green"></span>
+                <span class="t-title">~/.codeium/windsurf/mcp_config.json</span>
+              </div>
+              <pre class="terminal">{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"team-docs"</span>: {
+      <span class="k">"serverUrl"</span>: <span class="s">"http://YOUR_SERVER:3000/sse"</span>,
+      <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"Bearer YOUR_KEY"</span> }
+    }
+  }
+}</pre>
+            </div>
+
+            <div id="tab-opencode" class="agent-tab-panel">
+              <div class="terminal-header">
+                <span class="t-dot t-red"></span><span class="t-dot t-yellow"></span><span class="t-dot t-green"></span>
+                <span class="t-title">~/.config/opencode/config.json</span>
+              </div>
+              <pre class="terminal">{
+  <span class="k">"mcp"</span>: {
+    <span class="k">"team-docs"</span>: {
+      <span class="k">"type"</span>: <span class="s">"remote"</span>,
+      <span class="k">"url"</span>:  <span class="s">"http://YOUR_SERVER:3000/mcp"</span>,
+      <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"Bearer YOUR_KEY"</span> }
+    }
+  }
+}</pre>
+            </div>
+
+            <div id="tab-codex" class="agent-tab-panel">
+              <div class="terminal-header">
+                <span class="t-dot t-red"></span><span class="t-dot t-yellow"></span><span class="t-dot t-green"></span>
+                <span class="t-title">~/.codex/config.json</span>
+              </div>
+              <pre class="terminal">{
+  <span class="k">"mcpServers"</span>: [
+    {
+      <span class="k">"name"</span>: <span class="s">"team-docs"</span>,
+      <span class="k">"url"</span>:  <span class="s">"http://YOUR_SERVER:3000/mcp"</span>,
+      <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"Bearer YOUR_KEY"</span> }
+    }
+  ]
+}</pre>
+            </div>
+
+            <div id="tab-continue" class="agent-tab-panel">
+              <div class="terminal-header">
+                <span class="t-dot t-red"></span><span class="t-dot t-yellow"></span><span class="t-dot t-green"></span>
+                <span class="t-title">~/.continue/config.json</span>
+              </div>
+              <pre class="terminal">{
+  <span class="k">"mcpServers"</span>: [
+    {
+      <span class="k">"name"</span>: <span class="s">"team-docs"</span>,
+      <span class="k">"transport"</span>: {
+        <span class="k">"type"</span>:    <span class="s">"sse"</span>,
+        <span class="k">"url"</span>:     <span class="s">"http://YOUR_SERVER:3000/sse"</span>,
+        <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>: <span class="s">"Bearer YOUR_KEY"</span> }
+      }
+    }
+  ]
+}</pre>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -749,5 +881,14 @@ cd vaultdoc && cp .env.example .env</pre>
   </div>
 </footer>
 
+<script>
+  function showTab(btn, panelId) {
+    const container = btn.closest('.agent-tabs');
+    container.querySelectorAll('.agent-tab').forEach(t => t.classList.remove('active'));
+    container.querySelectorAll('.agent-tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(panelId).classList.add('active');
+  }
+</script>
 </body>
 </html>

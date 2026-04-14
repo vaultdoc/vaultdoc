@@ -1,8 +1,9 @@
 import "node:process";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { ipAllowlist, apiKeyAuth, adminKeyAuth } from "./middleware/auth.js";
 import { registerDocTools } from "./tools/docs.js";
 import { registerDevOpsTools } from "./tools/devops.js";
@@ -10,6 +11,18 @@ import { ensureDocsDir } from "./services/storage.js";
 import { initKeyStore, listKeyNames, addKey, removeKey } from "./services/keyStore.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
+
+// CORS — needed for Electron-based agents (Cursor, Windsurf) and web clients
+function mcpCors(req: Request, res: Response, next: NextFunction) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Mcp-Session-Id");
+  if (req.method === "OPTIONS") { res.sendStatus(204); return; }
+  next();
+}
+
+// SSE sessions — for legacy MCP clients (older Cursor, Continue.dev, etc.)
+const sseSessions = new Map<string, { server: McpServer; transport: SSEServerTransport }>();
 
 async function main() {
   await ensureDocsDir();
@@ -65,26 +78,43 @@ async function main() {
     res.json({ message: `Key "${paramName}" revoked` });
   });
 
-  // MCP endpoint — IP allowlist + API key auth
-  app.use(ipAllowlist);
-  app.use(apiKeyAuth);
-
-  app.post("/mcp", async (req, res) => {
+  // MCP endpoints — CORS + IP allowlist + API key auth
+  // ── Streamable HTTP (modern: Claude Code, Cursor, Codex, OpenCode, Windsurf…) ──
+  app.all("/mcp", mcpCors, ipAllowlist, apiKeyAuth, async (req, res) => {
     const server = new McpServer({ name: "vaultdoc", version: "0.1.0" });
     registerDocTools(server);
     registerDevOpsTools(server);
 
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined, // stateless
-    });
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+
+    res.on("close", () => { transport.close(); server.close(); });
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  });
+
+  // ── SSE legacy transport (older clients: Continue.dev, some Zed versions…) ──
+  app.get("/sse", mcpCors, ipAllowlist, apiKeyAuth, async (req, res) => {
+    const server = new McpServer({ name: "vaultdoc", version: "0.1.0" });
+    registerDocTools(server);
+    registerDevOpsTools(server);
+
+    const transport = new SSEServerTransport("/messages", res);
+    sseSessions.set(transport.sessionId, { server, transport });
 
     res.on("close", () => {
+      sseSessions.delete(transport.sessionId);
       transport.close();
       server.close();
     });
 
     await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+  });
+
+  app.post("/messages", mcpCors, ipAllowlist, apiKeyAuth, async (req, res) => {
+    const sessionId = req.query["sessionId"] as string;
+    const session = sseSessions.get(sessionId);
+    if (!session) { res.status(404).json({ error: "Session not found" }); return; }
+    await session.transport.handlePostMessage(req, res, req.body);
   });
 
   app.listen(PORT, "0.0.0.0", () => {

@@ -25,7 +25,7 @@ export function registerDevOpsTools(server: McpServer) {
           content: [
             {
               type: "text",
-              text: `No runbook found for "${service}". Consider creating one with create_doc.`,
+              text: `No runbook found for "${service}". Consider creating one with save_doc.`,
             },
           ],
         };
