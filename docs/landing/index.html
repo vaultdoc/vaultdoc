@@ -4,21 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <title>vaultdoc — AI-powered team documentation for Claude Code & Cursor</title>
-  <meta name="description" content="An open-source MCP server that gives Claude Code and Cursor direct access to your team's internal documentation. AI-polished updates, Slack notifications, self-hostable." />
+  <title>vaultdoc — Team docs for AI agents</title>
+  <meta name="description" content="An open-source MCP server that gives Claude Code, Cursor, and any AI agent direct access to your team's internal documentation. Slack notifications, named API keys, self-hostable." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
+      --bg: #090c10;
+      --surface: #0d1117;
+      --surface2: #161b22;
+      --border: #21262d;
+      --border2: #30363d;
       --text: #e6edf3;
-      --muted: #8b949e;
+      --muted: #7d8590;
+      --muted2: #8b949e;
       --accent: #58a6ff;
       --accent-dim: #1f6feb;
+      --accent-glow: rgba(88, 166, 255, 0.15);
       --green: #3fb950;
-      --tag-bg: #1f2d3d;
+      --purple: #bc8cff;
+      --orange: #ffa657;
+      --red: #f85149;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     }
 
     html { font-size: 16px; scroll-behavior: smooth; }
@@ -27,444 +34,718 @@
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       line-height: 1.6;
+      overflow-x: hidden;
     }
 
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    /* ── Layout ── */
-    .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
 
     /* ── Nav ── */
     nav {
-      border-bottom: 1px solid var(--border);
-      padding: 1rem 0;
       position: sticky;
       top: 0;
-      background: var(--bg);
-      z-index: 10;
+      z-index: 100;
+      border-bottom: 1px solid var(--border);
+      background: rgba(9, 12, 16, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
     nav .inner {
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
-      padding: 0 1.5rem;
+      padding: 0.9rem 1.5rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .nav-logo { font-weight: 600; font-size: 0.95rem; color: var(--text); }
-    .nav-logo span { color: var(--accent); }
-    .nav-links { display: flex; gap: 1.5rem; align-items: center; }
-    .nav-links a { color: var(--muted); font-size: 0.9rem; }
+    .nav-links { display: flex; gap: 1.25rem; align-items: center; }
+    .nav-links a { color: var(--muted2); font-size: 0.875rem; transition: color 0.15s; }
     .nav-links a:hover { color: var(--text); text-decoration: none; }
+
     .btn {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
       padding: 0.45rem 1rem;
       border-radius: 6px;
       font-size: 0.875rem;
       font-weight: 500;
       cursor: pointer;
-      transition: opacity 0.15s;
+      transition: all 0.15s;
+      white-space: nowrap;
     }
-    .btn:hover { opacity: 0.85; text-decoration: none; }
-    .btn-primary { background: var(--accent-dim); color: #fff; border: 1px solid var(--accent); }
-    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn:hover { text-decoration: none; }
+    .btn-primary {
+      background: var(--accent-dim);
+      color: #fff;
+      border: 1px solid rgba(88, 166, 255, 0.4);
+      box-shadow: 0 0 12px rgba(31, 111, 235, 0.3);
+    }
+    .btn-primary:hover { background: #2176e8; box-shadow: 0 0 20px rgba(31, 111, 235, 0.45); }
+    .btn-outline {
+      background: transparent;
+      color: var(--muted2);
+      border: 1px solid var(--border2);
+    }
+    .btn-outline:hover { color: var(--text); border-color: var(--muted2); }
+    .btn-lg { padding: 0.65rem 1.4rem; font-size: 0.975rem; border-radius: 8px; }
 
     /* ── Hero ── */
-    .hero {
-      padding: 5rem 0 4rem;
+    .hero-wrap {
+      position: relative;
+      overflow: hidden;
+      padding: 5.5rem 0 4.5rem;
       text-align: center;
     }
+    /* subtle dot grid */
+    .hero-wrap::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(var(--border) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    /* glow behind headline */
+    .hero-wrap::after {
+      content: "";
+      position: absolute;
+      top: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 700px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(31, 111, 235, 0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-wrap .container { position: relative; z-index: 1; }
+
     .badge {
-      display: inline-block;
-      background: var(--tag-bg);
-      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(88, 166, 255, 0.08);
+      border: 1px solid rgba(88, 166, 255, 0.25);
       color: var(--accent);
       font-size: 0.78rem;
-      padding: 0.25rem 0.75rem;
+      font-weight: 500;
+      padding: 0.3rem 0.85rem;
       border-radius: 999px;
-      margin-bottom: 1.5rem;
-      letter-spacing: 0.04em;
+      margin-bottom: 1.75rem;
+      letter-spacing: 0.03em;
     }
-    h1 {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 700;
-      line-height: 1.2;
-      margin-bottom: 1.25rem;
-      letter-spacing: -0.02em;
+    .badge-dot {
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--green);
     }
-    h1 .highlight { color: var(--accent); }
-    .hero-sub {
-      font-size: 1.125rem;
-      color: var(--muted);
-      max-width: 560px;
-      margin: 0 auto 2.5rem;
-    }
-    .hero-ctas { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
-    .btn-large { padding: 0.65rem 1.5rem; font-size: 1rem; border-radius: 8px; }
 
-    /* ── Flow diagram ── */
-    .flow {
-      margin: 3.5rem 0;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 2rem 1.5rem;
-      text-align: center;
+    h1 {
+      font-size: clamp(2.2rem, 5.5vw, 3.4rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
     }
-    .flow-row {
+    h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--muted2);
+      max-width: 540px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .hero-ctas { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Architecture diagram ── */
+    .arch {
+      margin: 3.5rem auto 0;
+      max-width: 780px;
+    }
+    .arch-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .arch-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 1.75rem 2rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 0;
       flex-wrap: wrap;
-      font-size: 0.925rem;
+      row-gap: 1rem;
     }
-    .flow-node {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      white-space: nowrap;
+    .arch-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 120px;
     }
-    .flow-node.accent { border-color: var(--accent-dim); color: var(--accent); }
-    .arrow { color: var(--muted); font-size: 1.1rem; }
-
-    /* ── Section headers ── */
-    section { padding: 4rem 0; border-top: 1px solid var(--border); }
-    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
-    .section-sub { color: var(--muted); margin-bottom: 2rem; }
-
-    /* ── Tools table ── */
-    .tools-table { width: 100%; border-collapse: collapse; }
-    .tools-table th {
-      text-align: left;
-      padding: 0.6rem 0.75rem;
+    .arch-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      border: 1px solid var(--border2);
+    }
+    .arch-icon.blue { background: rgba(88, 166, 255, 0.1); border-color: rgba(88, 166, 255, 0.3); }
+    .arch-icon.purple { background: rgba(188, 140, 255, 0.1); border-color: rgba(188, 140, 255, 0.3); }
+    .arch-icon.green { background: rgba(63, 185, 80, 0.1); border-color: rgba(63, 185, 80, 0.3); }
+    .arch-step-name {
       font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+    }
+    .arch-step-sub {
+      font-size: 0.7rem;
       color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--border);
+      text-align: center;
+      line-height: 1.3;
     }
-    .tools-table td {
-      padding: 0.7rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
+    .arch-arrow {
+      color: var(--border2);
+      font-size: 1.1rem;
+      padding: 0 0.75rem;
+      padding-bottom: 1.4rem;
+      flex-shrink: 0;
     }
-    .tools-table tr:last-child td { border-bottom: none; }
-    .tools-table code {
-      background: var(--tag-bg);
-      color: var(--accent);
-      padding: 0.15em 0.45em;
-      border-radius: 4px;
-      font-size: 0.85em;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    }
-    .tag {
-      display: inline-block;
-      font-size: 0.72rem;
-      padding: 0.1rem 0.5rem;
-      border-radius: 4px;
-      background: var(--tag-bg);
-      color: var(--muted);
-      border: 1px solid var(--border);
-    }
-
-    /* ── Code blocks ── */
-    pre {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem 1.5rem;
-      overflow-x: auto;
-      font-size: 0.85rem;
-      line-height: 1.6;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      margin-bottom: 1rem;
-    }
-    .code-label {
+    .arch-note {
+      margin-top: 1rem;
       font-size: 0.75rem;
       color: var(--muted);
-      margin-bottom: 0.4rem;
+      text-align: center;
+      padding: 0.5rem 1rem;
+      background: rgba(63, 185, 80, 0.05);
+      border: 1px solid rgba(63, 185, 80, 0.15);
+      border-radius: 6px;
     }
-    .comment { color: #6e7681; }
-    .kw { color: #ff7b72; }
-    .str { color: #a5d6ff; }
-    .key { color: #79c0ff; }
+    .arch-note strong { color: var(--green); }
 
-    /* ── Config table ── */
-    .config-table { width: 100%; border-collapse: collapse; }
-    .config-table th {
-      text-align: left;
-      padding: 0.5rem 0.75rem;
-      font-size: 0.8rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--border);
+    /* ── Sections ── */
+    section { padding: 5rem 0; border-top: 1px solid var(--border); }
+    .section-header { margin-bottom: 2.5rem; }
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
     }
-    .config-table td {
-      padding: 0.65rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.875rem;
-      vertical-align: top;
-    }
-    .config-table tr:last-child td { border-bottom: none; }
-    .config-table code {
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: 0.82em;
-    }
-    .req { color: #f85149; font-size: 0.75rem; font-weight: 600; }
-    .opt { color: var(--muted); font-size: 0.75rem; }
+    .section-sub { color: var(--muted2); font-size: 1rem; }
 
-    /* ── Security cards ── */
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
-    .card {
+    /* ── Feature grid ── */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .feature {
+      background: var(--surface);
+      padding: 1.5rem 1.5rem 1.75rem;
+      transition: background 0.15s;
+    }
+    .feature:hover { background: var(--surface2); }
+    .feat-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      margin-bottom: 0.85rem;
+    }
+    .feat-icon.blue { background: rgba(88,166,255,0.1); }
+    .feat-icon.purple { background: rgba(188,140,255,0.1); }
+    .feat-icon.green { background: rgba(63,185,80,0.1); }
+    .feat-icon.orange { background: rgba(255,166,87,0.1); }
+    .feature h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .feature p { font-size: 0.85rem; color: var(--muted2); line-height: 1.6; }
+
+    /* ── Tools ── */
+    .tools-grid { display: grid; gap: 0.5rem; }
+    .tool-row {
+      display: grid;
+      grid-template-columns: 180px 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 1.25rem;
+      transition: border-color 0.15s;
     }
-    .card-icon { font-size: 1.3rem; margin-bottom: 0.5rem; }
-    .card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.4rem; }
-    .card p { font-size: 0.85rem; color: var(--muted); }
+    .tool-row:hover { border-color: var(--border2); }
+    code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: rgba(88,166,255,0.1);
+      color: var(--accent);
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+    }
+    .tool-desc { font-size: 0.875rem; color: var(--muted2); }
+    .tool-tag {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .tag-docs { background: rgba(88,166,255,0.1); color: var(--accent); }
+    .tag-devops { background: rgba(63,185,80,0.1); color: var(--green); }
+
+    /* ── Quickstart ── */
+    .steps { display: flex; flex-direction: column; gap: 2.5rem; }
+    .step { display: grid; grid-template-columns: 32px 1fr; gap: 1.25rem; }
+    .step-num {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+    .step h3 { font-size: 0.975rem; font-weight: 600; margin-bottom: 0.6rem; }
+    .step p { font-size: 0.875rem; color: var(--muted2); margin-bottom: 0.75rem; }
+
+    pre {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 1.1rem 1.25rem;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      line-height: 1.7;
+      font-family: var(--mono);
+    }
+    pre.terminal { border-top: 2px solid var(--border2); border-radius: 0 0 8px 8px; }
+    .terminal-header {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      padding: 0.55rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .t-red { background: #ff5f57; }
+    .t-yellow { background: #febc2e; }
+    .t-green { background: #28c840; }
+    .t-title { margin-left: 0.5rem; font-size: 0.75rem; color: var(--muted); }
+
+    .c { color: #6e7681; }       /* comment */
+    .kw { color: #ff7b72; }      /* keyword */
+    .s { color: #a5d6ff; }       /* string */
+    .k { color: #79c0ff; }       /* key */
+    .p { color: var(--purple); } /* property */
+    .n { color: var(--orange); } /* number */
+
+    /* ── Deploy modes ── */
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .mode-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+    .mode-card.featured { border-color: rgba(88,166,255,0.35); background: rgba(88,166,255,0.04); }
+    .mode-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .mode-icon { font-size: 1.3rem; }
+    .mode-card h3 { font-size: 1rem; font-weight: 600; }
+    .mode-card ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+    .mode-card li { font-size: 0.85rem; color: var(--muted2); display: flex; gap: 0.5rem; }
+    .mode-card li::before { content: "✓"; color: var(--green); flex-shrink: 0; font-size: 0.8rem; margin-top: 0.1rem; }
+    .mode-label {
+      display: inline-block;
+      font-size: 0.68rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-left: 0.35rem;
+      vertical-align: middle;
+    }
+    .ml-free { background: rgba(63,185,80,0.15); color: var(--green); }
+    .ml-new { background: rgba(88,166,255,0.15); color: var(--accent); }
 
     /* ── Footer ── */
     footer {
       border-top: 1px solid var(--border);
-      padding: 2rem 0;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.85rem;
+      padding: 2.5rem 0;
     }
-    footer a { color: var(--muted); }
-    footer a:hover { color: var(--text); }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-left { display: flex; align-items: center; gap: 1.5rem; }
+    .footer-right { display: flex; gap: 1.25rem; }
+    .footer-right a, .footer-left a { font-size: 0.85rem; color: var(--muted); }
+    .footer-right a:hover, .footer-left a:hover { color: var(--text); text-decoration: none; }
 
-    @media (max-width: 600px) {
-      .nav-links .hide-mobile { display: none; }
-      .flow-node { font-size: 0.8rem; }
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav-links .hide-sm { display: none; }
+      .modes { grid-template-columns: 1fr; }
+      .tool-row { grid-template-columns: 1fr; }
+      .tool-tag { display: none; }
+      .arch-arrow { display: none; }
+      .arch-diagram { gap: 0.75rem; }
+      .footer-inner { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
 
+<!-- ── Nav ── -->
 <nav>
   <div class="inner">
-    <img src="logo-wordmark.svg" alt="vaultdoc" height="36" style="display:block;" />
+    <img src="logo-wordmark.svg" alt="vaultdoc" height="34" style="display:block;" />
     <div class="nav-links">
-      <a href="#tools" class="hide-mobile">Tools</a>
-      <a href="#quickstart" class="hide-mobile">Quickstart</a>
-      <a href="#security" class="hide-mobile">Security</a>
-      <a href="https://github.com/YOUR_ORG/vaultdoc" class="btn btn-outline">GitHub</a>
+      <a href="#how-it-works" class="hide-sm">How it works</a>
+      <a href="#tools" class="hide-sm">Tools</a>
+      <a href="#quickstart" class="hide-sm">Quickstart</a>
+      <a href="https://github.com/vaultdoc/vaultdoc" class="btn btn-outline">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
     </div>
   </div>
 </nav>
 
 <main>
-  <!-- ── Hero ── -->
-  <div class="container">
-    <div class="hero">
-      <div class="badge">Open Source &middot; Self-Hosted &middot; MCP</div>
-      <h1>Your team's docs,<br><span class="highlight">always current</span></h1>
-      <p class="hero-sub">
-        An MCP server that lets Claude Code and Cursor read, write, and search your internal documentation —
-        with AI-polished updates and Slack notifications on every change.
-      </p>
-      <div class="hero-ctas">
-        <a href="https://github.com/YOUR_ORG/vaultdoc" class="btn btn-primary btn-large">View on GitHub</a>
-        <a href="#quickstart" class="btn btn-outline btn-large">Self-host in 5 min</a>
-      </div>
 
-      <div class="flow">
-        <div class="flow-row">
-          <div class="flow-node accent">Claude Code / Cursor</div>
-          <span class="arrow">&#8594;</span>
-          <div class="flow-node">MCP call</div>
-          <span class="arrow">&#8594;</span>
-          <div class="flow-node accent">vaultdoc</div>
+<!-- ── Hero ── -->
+<div class="hero-wrap">
+  <div class="container">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Open Source &nbsp;·&nbsp; MCP &nbsp;·&nbsp; AGPLv3
+    </div>
+    <h1>Team docs that<br><em>your AI agent can use</em></h1>
+    <p class="hero-sub">
+      An MCP server that gives Claude Code, Cursor, and any AI agent
+      direct access to your team's internal docs — runbooks, architecture,
+      onboarding guides. Slack-notified on every change.
+    </p>
+    <div class="hero-ctas">
+      <a href="https://github.com/vaultdoc/vaultdoc" class="btn btn-primary btn-lg">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View on GitHub
+      </a>
+      <a href="#quickstart" class="btn btn-outline btn-lg">Self-host in 5 min →</a>
+    </div>
+
+    <!-- Architecture diagram -->
+    <div class="arch">
+      <div class="arch-label">How it works</div>
+      <div class="arch-diagram">
+        <div class="arch-step">
+          <div class="arch-icon blue">🤖</div>
+          <div class="arch-step-name">Your AI agent</div>
+          <div class="arch-step-sub">Claude Code, Cursor,<br>or any MCP client</div>
         </div>
-        <div style="color: var(--muted); font-size: 0.8rem; margin: 0.75rem 0;">&#8595;</div>
-        <div class="flow-row">
-          <div class="flow-node">AI improves content</div>
-          <span class="arrow">&#8594;</span>
-          <div class="flow-node">Saves to disk</div>
-          <span class="arrow">&#8594;</span>
-          <div class="flow-node">Notifies Slack</div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-step">
+          <div class="arch-icon purple">🔌</div>
+          <div class="arch-step-name">MCP call</div>
+          <div class="arch-step-sub">save_doc, get_doc,<br>search_docs…</div>
         </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-step">
+          <div class="arch-icon blue">🗄️</div>
+          <div class="arch-step-name">vaultdoc</div>
+          <div class="arch-step-sub">Stores markdown,<br>gates access</div>
+        </div>
+        <div class="arch-arrow">→</div>
+        <div class="arch-step">
+          <div class="arch-icon green">💬</div>
+          <div class="arch-step-name">Slack</div>
+          <div class="arch-step-sub">Team notified<br>on every change</div>
+        </div>
+      </div>
+      <div class="arch-note">
+        <strong>AI runs on your machine.</strong> The server is a pure storage + notification layer — it never calls any AI API.
       </div>
     </div>
   </div>
+</div>
 
-  <!-- ── Tools ── -->
-  <section id="tools">
-    <div class="container">
-      <h2>Available Tools</h2>
-      <p class="section-sub">Everything Claude or Cursor needs to manage team knowledge.</p>
-      <table class="tools-table">
-        <thead>
-          <tr><th>Tool</th><th>Description</th><th>Category</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>list_docs</code></td><td>List all docs, filter by category</td><td><span class="tag">docs</span></td></tr>
-          <tr><td><code>get_doc</code></td><td>Fetch the full content of a doc by path</td><td><span class="tag">docs</span></td></tr>
-          <tr><td><code>search_docs</code></td><td>Keyword search across titles, tags, and content</td><td><span class="tag">docs</span></td></tr>
-          <tr><td><code>create_doc</code></td><td>Create a doc — AI polishes it, Slack notified</td><td><span class="tag">docs</span></td></tr>
-          <tr><td><code>update_doc</code></td><td>Describe a change — AI applies it, Slack notified</td><td><span class="tag">docs</span></td></tr>
-          <tr><td><code>delete_doc</code></td><td>Delete a doc, team notified</td><td><span class="tag">docs</span></td></tr>
-          <tr><td><code>get_runbook</code></td><td>Fetch runbook by service name — fast during incidents</td><td><span class="tag">devops</span></td></tr>
-          <tr><td><code>list_runbooks</code></td><td>All runbooks at a glance</td><td><span class="tag">devops</span></td></tr>
-          <tr><td><code>get_devops_context</code></td><td>Load all DevOps, architecture & runbook summaries</td><td><span class="tag">devops</span></td></tr>
-          <tr><td><code>get_incident_docs</code></td><td>All post-mortems and incident documentation</td><td><span class="tag">devops</span></td></tr>
-        </tbody>
-      </table>
+<!-- ── Features ── -->
+<section id="features">
+  <div class="container">
+    <div class="section-header">
+      <h2>Everything your team needs</h2>
+      <p class="section-sub">Built for teams that use AI agents in their daily workflow.</p>
     </div>
-  </section>
+    <div class="features">
+      <div class="feature">
+        <div class="feat-icon blue">📂</div>
+        <h3>Structured docs</h3>
+        <p>Categorized markdown files — runbooks, architecture, onboarding, incident post-mortems, API docs. Frontmatter metadata tracked per-file.</p>
+      </div>
+      <div class="feature">
+        <div class="feat-icon green">🔔</div>
+        <h3>Slack notifications</h3>
+        <p>Every create, update, or delete triggers a formatted Slack message with the author, path, and a change summary written by your AI agent.</p>
+      </div>
+      <div class="feature">
+        <div class="feat-icon purple">🔍</div>
+        <h3>Full-text search</h3>
+        <p>Keyword search across doc titles, tags, categories, and body content. Your agent can find context without knowing the exact file path.</p>
+      </div>
+      <div class="feature">
+        <div class="feat-icon orange">🔑</div>
+        <h3>Named API keys</h3>
+        <p>One key per person or tool. Revoke individually via the admin API — no restart needed, no other clients affected.</p>
+      </div>
+      <div class="feature">
+        <div class="feat-icon blue">🛡️</div>
+        <h3>IP allowlist</h3>
+        <p>Restrict access to your VPN subnet. All requests from outside the allowlist are rejected before any auth check.</p>
+      </div>
+      <div class="feature">
+        <div class="feat-icon green">🏢</div>
+        <h3>Multi-tenant cloud mode</h3>
+        <p>Workspace-isolated storage, JWT auth, and an admin API for managing teams. Run it as a shared service for your whole org.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <!-- ── Quickstart ── -->
-  <section id="quickstart">
-    <div class="container">
+<!-- ── Tools ── -->
+<section id="tools">
+  <div class="container">
+    <div class="section-header">
+      <h2>Available MCP tools</h2>
+      <p class="section-sub">Registered automatically when your agent connects.</p>
+    </div>
+    <div class="tools-grid">
+      <div class="tool-row">
+        <code>list_docs</code>
+        <span class="tool-desc">List all docs; optionally filter by category</span>
+        <span class="tool-tag tag-docs">docs</span>
+      </div>
+      <div class="tool-row">
+        <code>get_doc</code>
+        <span class="tool-desc">Fetch full content of a doc by relative path</span>
+        <span class="tool-tag tag-docs">docs</span>
+      </div>
+      <div class="tool-row">
+        <code>search_docs</code>
+        <span class="tool-desc">Keyword search across titles, tags, and content</span>
+        <span class="tool-tag tag-docs">docs</span>
+      </div>
+      <div class="tool-row">
+        <code>save_doc</code>
+        <span class="tool-desc">Create or update a doc — agent writes the content, server stores it and pings Slack</span>
+        <span class="tool-tag tag-docs">docs</span>
+      </div>
+      <div class="tool-row">
+        <code>delete_doc</code>
+        <span class="tool-desc">Delete a doc; team notified via Slack</span>
+        <span class="tool-tag tag-docs">docs</span>
+      </div>
+      <div class="tool-row">
+        <code>get_runbook</code>
+        <span class="tool-desc">Fetch a runbook by service name — fast during incidents</span>
+        <span class="tool-tag tag-devops">devops</span>
+      </div>
+      <div class="tool-row">
+        <code>get_devops_context</code>
+        <span class="tool-desc">Load all DevOps, architecture, and runbook summaries at once</span>
+        <span class="tool-tag tag-devops">devops</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Quickstart ── -->
+<section id="quickstart">
+  <div class="container">
+    <div class="section-header">
       <h2>Self-host in 5 minutes</h2>
-      <p class="section-sub">Docker is the fastest path. Everything runs from a single container.</p>
+      <p class="section-sub">Docker is the fastest path. One container, one volume.</p>
+    </div>
+    <div class="steps">
 
-      <div class="code-label">1. Clone and configure</div>
-      <pre><span class="comment"># Clone the repo</span>
-git clone https://github.com/YOUR_ORG/vaultdoc.git
-cd vaultdoc
-cp .env.example .env</pre>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Clone and configure</h3>
+          <div class="terminal-header">
+            <span class="t-dot t-red"></span>
+            <span class="t-dot t-yellow"></span>
+            <span class="t-dot t-green"></span>
+            <span class="t-title">terminal</span>
+          </div>
+          <pre class="terminal">git clone https://github.com/vaultdoc/vaultdoc.git
+cd vaultdoc && cp .env.example .env</pre>
+        </div>
+      </div>
 
-      <div class="code-label">2. Set your keys in <code>.env</code></div>
-      <pre><span class="comment"># Minimum required</span>
-<span class="key">ADMIN_KEY</span>=<span class="str">$(openssl rand -hex 32)</span>    <span class="comment"># for managing API keys</span>
-<span class="key">ANTHROPIC_API_KEY</span>=<span class="str">sk-ant-...</span>           <span class="comment"># for AI doc updates</span>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Set your keys in <code>.env</code></h3>
+          <div class="terminal-header">
+            <span class="t-dot t-red"></span>
+            <span class="t-dot t-yellow"></span>
+            <span class="t-dot t-green"></span>
+            <span class="t-title">.env</span>
+          </div>
+          <pre class="terminal"><span class="c"># Required</span>
+<span class="k">ADMIN_KEY</span>=<span class="s">$(openssl rand -hex 32)</span>      <span class="c"># manages API keys</span>
 
-<span class="comment"># Optional but recommended</span>
-<span class="key">SLACK_WEBHOOK_URL</span>=<span class="str">https://hooks.slack.com/...</span>
-<span class="key">ALLOWED_IPS</span>=<span class="str">10.8.0.0/24</span>               <span class="comment"># your VPN subnet</span></pre>
+<span class="c"># Recommended</span>
+<span class="k">SLACK_WEBHOOK_URL</span>=<span class="s">https://hooks.slack.com/...</span>
+<span class="k">ALLOWED_IPS</span>=<span class="s">10.8.0.0/24</span>               <span class="c"># your VPN subnet</span></pre>
+        </div>
+      </div>
 
-      <div class="code-label">3. Start the server</div>
-      <pre>docker compose up -d</pre>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Start the server</h3>
+          <div class="terminal-header">
+            <span class="t-dot t-red"></span>
+            <span class="t-dot t-yellow"></span>
+            <span class="t-dot t-green"></span>
+            <span class="t-title">terminal</span>
+          </div>
+          <pre class="terminal">docker compose up -d</pre>
+        </div>
+      </div>
 
-      <div class="code-label">4. Add your first API key</div>
-      <pre>curl -X POST http://localhost:3000/admin/keys \
-  -H <span class="str">"Authorization: Bearer $ADMIN_KEY"</span> \
-  -H <span class="str">"Content-Type: application/json"</span> \
-  -d <span class="str">'{"name": "claude-code-me", "key": "sk-mcp-my-secret"}'</span></pre>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <h3>Create an API key for your agent</h3>
+          <div class="terminal-header">
+            <span class="t-dot t-red"></span>
+            <span class="t-dot t-yellow"></span>
+            <span class="t-dot t-green"></span>
+            <span class="t-title">terminal</span>
+          </div>
+          <pre class="terminal">curl -X POST http://localhost:3000/admin/keys \
+  -H <span class="s">"Authorization: Bearer $ADMIN_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"name": "claude-code", "key": "sk-mcp-my-secret"}'</span></pre>
+        </div>
+      </div>
 
-      <div class="code-label">5. Connect Claude Code — add to <code>~/.claude/settings.json</code></div>
-      <pre>{
-  <span class="key">"mcpServers"</span>: {
-    <span class="key">"team-docs"</span>: {
-      <span class="key">"type"</span>: <span class="str">"http"</span>,
-      <span class="key">"url"</span>: <span class="str">"http://YOUR_SERVER_IP:3000/mcp"</span>,
-      <span class="key">"headers"</span>: {
-        <span class="key">"Authorization"</span>: <span class="str">"Bearer sk-mcp-my-secret"</span>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div>
+          <h3>Connect Claude Code</h3>
+          <p>Add to <code>~/.claude/settings.json</code> (or your Cursor MCP config):</p>
+          <div class="terminal-header">
+            <span class="t-dot t-red"></span>
+            <span class="t-dot t-yellow"></span>
+            <span class="t-dot t-green"></span>
+            <span class="t-title">~/.claude/settings.json</span>
+          </div>
+          <pre class="terminal">{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"team-docs"</span>: {
+      <span class="k">"type"</span>: <span class="s">"http"</span>,
+      <span class="k">"url"</span>:  <span class="s">"http://YOUR_SERVER:3000/mcp"</span>,
+      <span class="k">"headers"</span>: {
+        <span class="k">"Authorization"</span>: <span class="s">"Bearer sk-mcp-my-secret"</span>
       }
     }
   }
 }</pre>
-    </div>
-  </section>
-
-  <!-- ── Config ── -->
-  <section id="config">
-    <div class="container">
-      <h2>Configuration</h2>
-      <p class="section-sub">All config is via environment variables.</p>
-      <table class="config-table">
-        <thead>
-          <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>ADMIN_KEY</code> <span class="req">required</span></td>
-            <td>—</td>
-            <td>Secret for <code>/admin/keys</code> endpoints. Generate with <code>openssl rand -hex 32</code>.</td>
-          </tr>
-          <tr>
-            <td><code>ANTHROPIC_API_KEY</code> <span class="req">required</span></td>
-            <td>—</td>
-            <td>Powers AI doc polishing and change summaries.</td>
-          </tr>
-          <tr>
-            <td><code>SLACK_WEBHOOK_URL</code> <span class="opt">optional</span></td>
-            <td>—</td>
-            <td>Slack incoming webhook. If unset, Slack notifications are silently skipped.</td>
-          </tr>
-          <tr>
-            <td><code>ALLOWED_IPS</code> <span class="opt">optional</span></td>
-            <td>(disabled)</td>
-            <td>Comma-separated CIDR ranges, e.g. <code>10.8.0.0/24</code>. Blocks all traffic outside the allowlist.</td>
-          </tr>
-          <tr>
-            <td><code>DOCS_DIR</code> <span class="opt">optional</span></td>
-            <td><code>/data/docs</code></td>
-            <td>Directory where markdown docs are stored. Mount a volume here.</td>
-          </tr>
-          <tr>
-            <td><code>TEAM_NAME</code> <span class="opt">optional</span></td>
-            <td><code>Engineering Team</code></td>
-            <td>Shown in Slack notification headers.</td>
-          </tr>
-          <tr>
-            <td><code>PORT</code> <span class="opt">optional</span></td>
-            <td><code>3000</code></td>
-            <td>HTTP port the server listens on.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- ── Security ── -->
-  <section id="security">
-    <div class="container">
-      <h2>Security</h2>
-      <p class="section-sub">Built to run inside your infrastructure, not exposed to the internet.</p>
-      <div class="cards">
-        <div class="card">
-          <div class="card-icon">&#128274;</div>
-          <h3>IP Allowlist</h3>
-          <p>Set <code>ALLOWED_IPS</code> to your VPN subnet. All traffic from outside is rejected at the first middleware layer.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">&#128273;</div>
-          <h3>Named API Keys</h3>
-          <p>One key per person or tool. Revoke individually via the admin API — no restart required, no other clients affected.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">&#128100;</div>
-          <h3>Separate Admin Key</h3>
-          <p><code>ADMIN_KEY</code> is distinct from client keys. Key management never bootstraps itself — no circular dependency.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">&#128296;</div>
-          <h3>Non-Root Container</h3>
-          <p>The Docker image runs as an unprivileged <code>mcp</code> user. Docs volume is the only writable path.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">&#128737;</div>
-          <h3>Path Traversal Protection</h3>
-          <p>All doc paths are validated and sandboxed to <code>DOCS_DIR</code>. Requests for <code>../../etc/passwd</code> are rejected.</p>
-        </div>
-        <div class="card">
-          <div class="card-icon">&#9201;</div>
-          <h3>Rate Limiting</h3>
-          <p>100 requests per minute per IP. Protects against runaway AI loops or misconfigured clients.</p>
         </div>
       </div>
+
     </div>
-  </section>
+  </div>
+</section>
+
+<!-- ── Deploy modes ── -->
+<section id="deploy">
+  <div class="container">
+    <div class="section-header">
+      <h2>Two deployment modes</h2>
+      <p class="section-sub">Start self-hosted, upgrade to cloud when your team grows.</p>
+    </div>
+    <div class="modes">
+      <div class="mode-card">
+        <div class="mode-header">
+          <span class="mode-icon">🏠</span>
+          <div>
+            <h3>Self-hosted <span class="mode-label ml-free">Free forever</span></h3>
+          </div>
+        </div>
+        <ul>
+          <li>Single tenant — your server, your data</li>
+          <li>API key auth with named keys per user</li>
+          <li>VPN/IP allowlist for network isolation</li>
+          <li>Docker Compose, deploy anywhere</li>
+          <li>Zero external dependencies</li>
+        </ul>
+      </div>
+      <div class="mode-card featured">
+        <div class="mode-header">
+          <span class="mode-icon">☁️</span>
+          <div>
+            <h3>Cloud mode <span class="mode-label ml-new">Multi-tenant</span></h3>
+          </div>
+        </div>
+        <ul>
+          <li>Workspace-isolated storage per team</li>
+          <li>JWT-based auth with workspace tokens</li>
+          <li>Admin API for managing workspaces</li>
+          <li>One-click deploy to Fly.io</li>
+          <li>Persistent volume for doc storage</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <footer>
   <div class="container">
-    <p>
-      <a href="https://github.com/YOUR_ORG/vaultdoc">GitHub</a>
-      &nbsp;&middot;&nbsp;
-      <a href="https://github.com/YOUR_ORG/vaultdoc/blob/main/LICENSE">AGPLv3 License</a>
-      &nbsp;&middot;&nbsp;
-      <a href="https://github.com/YOUR_ORG/vaultdoc/issues">Issues</a>
-    </p>
+    <div class="footer-inner">
+      <div class="footer-left">
+        <img src="logo-wordmark.svg" alt="vaultdoc" height="28" />
+      </div>
+      <div class="footer-right">
+        <a href="https://github.com/vaultdoc/vaultdoc">GitHub</a>
+        <a href="https://github.com/vaultdoc/vaultdoc/blob/main/LICENSE">AGPLv3</a>
+        <a href="https://github.com/vaultdoc/vaultdoc/issues">Issues</a>
+        <a href="https://github.com/vaultdoc/vaultdoc/releases">Releases</a>
+      </div>
+    </div>
   </div>
 </footer>
 
