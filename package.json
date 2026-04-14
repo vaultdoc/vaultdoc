@@ -1,0 +1,30 @@
+{
+  "name": "team-docs-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for team documentation management with AI-powered updates and Slack notifications",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@modelcontextprotocol/sdk": "^1.10.0",
+    "@slack/webhook": "^7.0.3",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "glob": "^11.0.1",
+    "gray-matter": "^4.0.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

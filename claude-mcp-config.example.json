@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "team-docs": {
+      "type": "http",
+      "url": "http://10.8.0.1:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_KEY_HERE"
+      }
+    }
+  }
+}
