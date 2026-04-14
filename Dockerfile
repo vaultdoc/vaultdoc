@@ -17,9 +17,6 @@ ENV NODE_ENV=production
 ENV DOCS_DIR=/data/docs
 ENV API_KEYS_FILE=/data/api-keys.json
 
-# Install Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code
-
 # Non-root user
 RUN addgroup -S mcp && adduser -S mcp -G mcp
 

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as storage from "../services/storage.js";
-import { improveDoc, summarizeChange } from "../services/ai.js";
 import { notifyDocUpdated } from "../services/slack.js";
 
 const CATEGORY = z.enum([
@@ -38,36 +37,19 @@ export function registerCloudTools(server: McpServer, workspaceId: string) {
     return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
   });
 
-  server.tool("create_doc", "Create a doc — AI polishes content, Slack notified.", {
-    path: z.string(),
+  server.tool("save_doc", "Save a documentation file. Pass the final content — the AI agent calling this tool is responsible for writing good content.", {
+    path: z.string().describe("Relative path, e.g. devops/k8s-setup.md"),
     title: z.string(),
     category: CATEGORY,
     tags: z.array(z.string()).default([]),
-    content: z.string(),
-    author: z.string(),
-  }, async ({ path, title, category, tags, content, author }) => {
-    const improved = await improveDoc("", `Create: "${title}"\n\n${content}`, title);
-    const doc = await storage.saveDoc(path, improved, { title, category, tags }, author, workspaceId);
-    await notifyDocUpdated(path, title, author, `New doc created: ${title}`, "created");
-    return { content: [{ type: "text", text: `Created \`${doc.path}\`\n\n${improved}` }] };
-  });
-
-  server.tool("update_doc", "Describe a change — AI applies it, Slack notified.", {
-    path: z.string(),
-    change_description: z.string(),
-    author: z.string(),
-    meta: z.object({
-      title: z.string().optional(),
-      category: CATEGORY.optional(),
-      tags: z.array(z.string()).optional(),
-    }).optional(),
-  }, async ({ path, change_description, author, meta }) => {
-    const existing = await storage.getDoc(path, workspaceId);
-    const updated = await improveDoc(existing.content, change_description, existing.meta.title);
-    const summary = await summarizeChange(existing.content, updated, existing.meta.title);
-    const doc = await storage.saveDoc(path, updated, meta ?? {}, author, workspaceId);
-    await notifyDocUpdated(path, doc.meta.title, author, summary, "updated");
-    return { content: [{ type: "text", text: `Updated \`${path}\`\n\n**Summary:** ${summary}\n\n---\n\n${updated}` }] };
+    content: z.string().describe("Full markdown content to save"),
+    author: z.string().describe("Who is saving this doc"),
+    change_summary: z.string().describe("One-line summary of what changed, sent to Slack"),
+  }, async ({ path, title, category, tags, content, author, change_summary }) => {
+    const isNew = await storage.getDoc(path, workspaceId).then(() => false).catch(() => true);
+    const doc = await storage.saveDoc(path, content, { title, category, tags }, author, workspaceId);
+    await notifyDocUpdated(path, doc.meta.title, author, change_summary, isNew ? "created" : "updated");
+    return { content: [{ type: "text", text: `Saved \`${path}\`` }] };
   });
 
   server.tool("delete_doc", "Delete a doc.", {
