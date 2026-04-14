@@ -1,79 +1,64 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const execFileAsync = promisify(execFile);
 
 /**
- * Given a raw change description + current doc content, produce an improved
- * version of the documentation. Returns the updated markdown content only.
+ * Run a prompt through the local `claude` CLI.
+ * Uses the user's existing Claude Code auth — no ANTHROPIC_API_KEY needed.
+ */
+async function ask(prompt: string): Promise<string> {
+  const { stdout } = await execFileAsync("claude", [
+    "--print",           // non-interactive, print response and exit
+    "--output-format", "text",
+    prompt,
+  ], {
+    timeout: 60_000,
+    maxBuffer: 1024 * 1024 * 4, // 4 MB
+  });
+  return stdout.trim();
+}
+
+/**
+ * Given a change description + current doc content, produce an improved version.
+ * Returns updated markdown content only.
  */
 export async function improveDoc(
   currentContent: string,
   changeDescription: string,
   docTitle: string
 ): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: `You are a technical documentation assistant for a software engineering team.
-Your job is to update and improve documentation based on described changes.
+  return ask(`You are a technical documentation assistant.
+Update the following document based on the described change.
 Rules:
 - Keep existing structure unless the change requires restructuring
-- Be concise — no filler, no preamble
+- Be concise — no filler
 - Use markdown: headers, code blocks, bullet points
-- Preserve any existing sections that are not affected by the change
-- Return ONLY the updated markdown content, no explanations`,
-    messages: [
-      {
-        role: "user",
-        content: `Document title: ${docTitle}
+- Return ONLY the updated markdown content, no explanations
 
-Current content:
-\`\`\`markdown
-${currentContent}
-\`\`\`
+Document title: ${docTitle}
+
+${currentContent ? `Current content:\n\`\`\`markdown\n${currentContent}\n\`\`\`` : "This is a new document."}
 
 Requested change:
-${changeDescription}
-
-Return the updated markdown content.`,
-      },
-    ],
-  });
-
-  const text = response.content.find((b) => b.type === "text");
-  if (!text || text.type !== "text") throw new Error("No text response from AI");
-  return text.text.trim();
+${changeDescription}`);
 }
 
 /**
- * Summarize what changed between old and new doc content for the Slack notification.
+ * Summarize what changed between old and new doc content for Slack.
  */
 export async function summarizeChange(
   oldContent: string,
   newContent: string,
   docTitle: string
 ): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 256,
-    system: "You summarize documentation changes in 1-2 sentences for a Slack update. Be specific and concise.",
-    messages: [
-      {
-        role: "user",
-        content: `Doc: ${docTitle}
+  return ask(`Summarize this documentation change in 1-2 sentences for a Slack notification. Be specific and concise.
+
+Doc: ${docTitle}
 
 Before:
 ${oldContent.slice(0, 2000)}
 
 After:
-${newContent.slice(0, 2000)}
-
-Summarize the change in 1-2 sentences.`,
-      },
-    ],
-  });
-
-  const text = response.content.find((b) => b.type === "text");
-  if (!text || text.type !== "text") return "Documentation updated.";
-  return text.text.trim();
+${newContent.slice(0, 2000)}`);
 }
