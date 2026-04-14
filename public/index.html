@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vaultdoc</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2128;
+      --border: #21262d;
+      --border2: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --muted2: #8b949e;
+      --accent: #58a6ff;
+      --accent-dim: #1f6feb;
+      --green: #3fb950;
+      --orange: #ffa657;
+      --red: #f85149;
+      --purple: #bc8cff;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Auth overlay ── */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #auth-overlay.hidden { display: none; }
+    .auth-box {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 2rem;
+      width: 380px;
+    }
+    .auth-box h2 { font-size: 1.1rem; margin-bottom: 0.35rem; }
+    .auth-box p { color: var(--muted2); font-size: 0.85rem; margin-bottom: 1.25rem; }
+    .auth-box input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      padding: 0.55rem 0.75rem;
+      margin-bottom: 0.75rem;
+      outline: none;
+    }
+    .auth-box input:focus { border-color: var(--accent); }
+    .auth-box button {
+      width: 100%;
+      background: var(--accent-dim);
+      border: 1px solid rgba(88,166,255,0.4);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.55rem;
+      cursor: pointer;
+    }
+    .auth-box button:hover { opacity: 0.85; }
+    .auth-error { color: var(--red); font-size: 0.8rem; margin-top: 0.5rem; display: none; }
+
+    /* ── Top bar ── */
+    #topbar {
+      height: 48px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-brand {
+      padding: 0 1.25rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border-right: 1px solid var(--border);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+    .topbar-brand span { color: var(--accent); }
+    #search-wrap {
+      flex: 1;
+      padding: 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      max-width: 420px;
+    }
+    #search {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.82rem;
+      padding: 0.35rem 0.65rem;
+      outline: none;
+    }
+    #search:focus { border-color: var(--accent); }
+    #search::placeholder { color: var(--muted); }
+    .topbar-right {
+      margin-left: auto;
+      padding: 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    #doc-count {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.2rem 0.65rem;
+    }
+    .btn-sm {
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 5px;
+      color: var(--muted2);
+      font-size: 0.775rem;
+      padding: 0.25rem 0.6rem;
+      cursor: pointer;
+    }
+    .btn-sm:hover { color: var(--text); border-color: var(--muted2); }
+
+    /* ── Layout ── */
+    #layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      height: calc(100vh - 48px);
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 0.75rem 0;
+    }
+    .category-section { margin-bottom: 0.25rem; }
+    .category-header {
+      padding: 0.3rem 1rem 0.3rem 0.85rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .category-count {
+      background: var(--surface2);
+      border-radius: 999px;
+      padding: 0.05rem 0.45rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+    .doc-link {
+      display: block;
+      padding: 0.35rem 1rem 0.35rem 1.25rem;
+      font-size: 0.8rem;
+      color: var(--muted2);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-left: 2px solid transparent;
+      transition: color 0.1s, background 0.1s;
+    }
+    .doc-link:hover { color: var(--text); background: var(--surface2); }
+    .doc-link.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(88,166,255,0.06);
+    }
+    .sidebar-empty {
+      padding: 1rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    /* ── Main content ── */
+    #main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem 2.5rem;
+      max-width: 860px;
+    }
+
+    /* Empty / welcome state */
+    #welcome {
+      margin-top: 3rem;
+      text-align: center;
+      color: var(--muted2);
+    }
+    #welcome h2 { font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--text); }
+    #welcome p { font-size: 0.875rem; max-width: 420px; margin: 0 auto; line-height: 1.7; }
+    #welcome code {
+      font-family: var(--mono);
+      font-size: 0.82em;
+      background: var(--surface2);
+      padding: 0.15em 0.45em;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    /* Doc view */
+    #doc-view { display: none; }
+    .doc-meta {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-meta h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.6rem; }
+    .doc-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+    .badge-cat { background: rgba(88,166,255,0.1); color: var(--accent); }
+    .badge-tag { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border2); }
+
+    /* Markdown body */
+    .markdown-body { font-size: 0.9rem; line-height: 1.75; }
+    .markdown-body h1 { font-size: 1.4rem; font-weight: 700; margin: 1.5rem 0 0.75rem; letter-spacing: -0.02em; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+    .markdown-body h2 { font-size: 1.15rem; font-weight: 600; margin: 1.5rem 0 0.6rem; }
+    .markdown-body h3 { font-size: 0.975rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+    .markdown-body p { margin-bottom: 0.9rem; }
+    .markdown-body ul, .markdown-body ol { margin: 0.5rem 0 0.9rem 1.5rem; }
+    .markdown-body li { margin-bottom: 0.25rem; }
+    .markdown-body a { color: var(--accent); }
+    .markdown-body a:hover { text-decoration: underline; }
+    .markdown-body code {
+      font-family: var(--mono);
+      font-size: 0.83em;
+      background: var(--surface2);
+      color: var(--accent);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+    .markdown-body pre {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      margin: 0.75rem 0 1rem;
+    }
+    .markdown-body pre code {
+      background: none;
+      color: var(--text);
+      padding: 0;
+      font-size: 0.82rem;
+    }
+    .markdown-body blockquote {
+      border-left: 3px solid var(--accent-dim);
+      padding-left: 1rem;
+      color: var(--muted2);
+      margin: 0.75rem 0;
+    }
+    .markdown-body table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1rem; }
+    .markdown-body th {
+      text-align: left;
+      padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid var(--border2);
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .markdown-body td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    .markdown-body img { max-width: 100%; border-radius: 6px; }
+    .markdown-body strong { font-weight: 600; color: var(--text); }
+
+    /* Loading / error */
+    .loading { color: var(--muted); font-size: 0.85rem; padding: 2rem; text-align: center; }
+    .error-msg { color: var(--red); font-size: 0.85rem; padding: 1rem; background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.2); border-radius: 8px; }
+
+    /* Stats bar */
+    #stats {
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 1.5rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+    .stat { display: flex; align-items: center; gap: 0.3rem; }
+    .stat-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <h2>vault<span style="color:var(--accent)">doc</span></h2>
+    <p>Enter your API key to access the dashboard.</p>
+    <input type="password" id="api-key-input" placeholder="sk-..." autocomplete="off" />
+    <button onclick="login()">Connect</button>
+    <div class="auth-error" id="auth-error">Invalid API key — check your .env</div>
+  </div>
+</div>
+
+<!-- Top bar -->
+<div id="topbar">
+  <div class="topbar-brand">vault<span>doc</span></div>
+  <div id="search-wrap">
+    <input id="search" type="text" placeholder="Search docs…" oninput="handleSearch(this.value)" />
+  </div>
+  <div class="topbar-right">
+    <span id="doc-count"></span>
+    <button class="btn-sm" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- Stats -->
+<div id="stats"></div>
+
+<!-- Layout -->
+<div id="layout">
+  <div id="sidebar">
+    <div class="sidebar-empty" id="sidebar-empty">No docs yet.<br>Ask your AI agent to create some.</div>
+  </div>
+  <div id="main">
+    <div id="welcome">
+      <h2>Welcome to vaultdoc</h2>
+      <p>Select a document from the sidebar, or ask your AI agent to create one using <code>save_doc</code>.</p>
+    </div>
+    <div id="doc-view">
+      <div class="doc-meta">
+        <h1 id="doc-title"></h1>
+        <div class="doc-meta-row" id="doc-meta-row"></div>
+      </div>
+      <div class="markdown-body" id="doc-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const BASE = '';
+  let apiKey = sessionStorage.getItem('vaultdoc_key') || '';
+  let allDocs = [];
+  let activeDocPath = null;
+
+  const CAT_COLORS = {
+    runbook: '#f85149', architecture: '#58a6ff', onboarding: '#3fb950',
+    incident: '#ffa657', devops: '#bc8cff', api: '#58a6ff',
+    process: '#8b949e', general: '#7d8590',
+  };
+
+  function headers() {
+    return { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' };
+  }
+
+  async function login() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (!key) return;
+    apiKey = key;
+    try {
+      const r = await fetch(BASE + '/health');
+      // Try an authenticated endpoint
+      const r2 = await fetch(BASE + '/api/docs', { headers: headers() });
+      if (r2.status === 401) {
+        document.getElementById('auth-error').style.display = 'block';
+        return;
+      }
+      sessionStorage.setItem('vaultdoc_key', key);
+      document.getElementById('auth-overlay').classList.add('hidden');
+      await loadDocs();
+    } catch (e) {
+      document.getElementById('auth-error').style.display = 'block';
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem('vaultdoc_key');
+    apiKey = '';
+    document.getElementById('auth-overlay').classList.remove('hidden');
+    document.getElementById('api-key-input').value = '';
+  }
+
+  async function loadDocs() {
+    const r = await fetch(BASE + '/api/docs', { headers: headers() });
+    if (!r.ok) return;
+    allDocs = await r.json();
+    renderSidebar(allDocs);
+    updateStats(allDocs);
+  }
+
+  function renderSidebar(docs) {
+    const sidebar = document.getElementById('sidebar');
+    const empty = document.getElementById('sidebar-empty');
+
+    if (docs.length === 0) {
+      empty.style.display = 'block';
+      // Remove old category sections
+      sidebar.querySelectorAll('.category-section').forEach(e => e.remove());
+      document.getElementById('doc-count').textContent = '';
+      return;
+    }
+    empty.style.display = 'none';
+    document.getElementById('doc-count').textContent = docs.length + ' docs';
+
+    // Group by category
+    const groups = {};
+    for (const doc of docs) {
+      if (!groups[doc.category]) groups[doc.category] = [];
+      groups[doc.category].push(doc);
+    }
+
+    sidebar.querySelectorAll('.category-section').forEach(e => e.remove());
+
+    for (const [cat, catDocs] of Object.entries(groups)) {
+      const section = document.createElement('div');
+      section.className = 'category-section';
+      section.innerHTML = `
+        <div class="category-header">
+          <span>${cat}</span>
+          <span class="category-count">${catDocs.length}</span>
+        </div>
+        ${catDocs.map(d => `
+          <div class="doc-link${d.path === activeDocPath ? ' active' : ''}"
+               onclick="openDoc('${d.path.replace(/'/g, "\\'")}')"
+               title="${d.title.replace(/"/g, '&quot;')}">
+            ${d.title}
+          </div>
+        `).join('')}
+      `;
+      sidebar.appendChild(section);
+    }
+  }
+
+  function updateStats(docs) {
+    const cats = {};
+    for (const d of docs) cats[d.category] = (cats[d.category] || 0) + 1;
+    const statsEl = document.getElementById('stats');
+    const entries = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+    statsEl.innerHTML = entries.map(([cat, count]) => `
+      <div class="stat">
+        <div class="stat-dot" style="background:${CAT_COLORS[cat] || '#8b949e'}"></div>
+        ${cat} <strong style="color:var(--text)">${count}</strong>
+      </div>
+    `).join('') || '<span>No docs yet</span>';
+  }
+
+  async function openDoc(docPath) {
+    activeDocPath = docPath;
+    // Update active state
+    document.querySelectorAll('.doc-link').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('onclick')?.includes(docPath.replace(/'/g, "\\'")));
+    });
+
+    document.getElementById('welcome').style.display = 'none';
+    document.getElementById('doc-view').style.display = 'block';
+    document.getElementById('doc-body').innerHTML = '<div class="loading">Loading…</div>';
+    document.getElementById('doc-title').textContent = '';
+    document.getElementById('doc-meta-row').innerHTML = '';
+
+    const r = await fetch(BASE + '/api/docs/' + encodeURIComponent(docPath), { headers: headers() });
+    if (!r.ok) {
+      document.getElementById('doc-body').innerHTML = '<div class="error-msg">Failed to load document.</div>';
+      return;
+    }
+    const doc = await r.json();
+
+    document.getElementById('doc-title').textContent = doc.meta.title;
+
+    const tags = (doc.meta.tags || []).map(t =>
+      `<span class="meta-badge badge-tag">${t}</span>`
+    ).join('');
+    const updatedAt = doc.meta.updatedAt
+      ? new Date(doc.meta.updatedAt).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' })
+      : '';
+
+    document.getElementById('doc-meta-row').innerHTML = `
+      <span class="meta-badge badge-cat">${doc.meta.category}</span>
+      ${tags}
+      ${updatedAt ? `<span>Updated ${updatedAt} by ${doc.meta.updatedBy || 'unknown'}</span>` : ''}
+      <span style="font-family:var(--mono);color:var(--muted)">${docPath}</span>
+    `;
+
+    document.getElementById('doc-body').innerHTML = marked.parse(doc.content || '');
+  }
+
+  let searchTimer;
+  async function handleSearch(q) {
+    clearTimeout(searchTimer);
+    if (!q.trim()) { renderSidebar(allDocs); return; }
+    searchTimer = setTimeout(async () => {
+      const r = await fetch(BASE + '/api/docs/search?q=' + encodeURIComponent(q), { headers: headers() });
+      if (!r.ok) return;
+      const results = await r.json();
+      renderSidebar(results);
+    }, 250);
+  }
+
+  document.getElementById('api-key-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+
+  document.getElementById('search').addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.getElementById('search').value = '';
+      renderSidebar(allDocs);
+    }
+  });
+
+  // Auto-login if key is stored
+  if (apiKey) {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    loadDocs();
+    // Poll for new docs every 30s
+    setInterval(loadDocs, 30_000);
+  }
+</script>
+</body>
+</html>

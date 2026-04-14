@@ -1,4 +1,6 @@
 import "node:process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type Request, type Response, type NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -8,8 +10,10 @@ import { ipAllowlist, apiKeyAuth, adminKeyAuth } from "./middleware/auth.js";
 import { registerDocTools } from "./tools/docs.js";
 import { registerDevOpsTools } from "./tools/devops.js";
 import { registerIngestTools } from "./tools/ingest.js";
-import { ensureDocsDir } from "./services/storage.js";
+import { ensureDocsDir, listDocs, getDoc, searchDocs } from "./services/storage.js";
 import { initKeyStore, listKeyNames, addKey, removeKey } from "./services/keyStore.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 
@@ -44,9 +48,33 @@ async function main() {
     })
   );
 
-  // Health check — no auth, accessible from inside VPN for probes
+  // Dashboard — static HTML
+  app.use(express.static(path.join(__dirname, "../public")));
+
+  // Health check — no auth
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", uptime: process.uptime() });
+  });
+
+  // REST API for the dashboard — same API key auth as MCP
+  app.get("/api/docs", apiKeyAuth, async (_req, res) => {
+    res.json(await listDocs());
+  });
+
+  app.get("/api/docs/search", apiKeyAuth, async (req, res) => {
+    const q = (req.query["q"] as string) ?? "";
+    if (!q) { res.json(await listDocs()); return; }
+    res.json(await searchDocs(q));
+  });
+
+  app.get("/api/docs/*", apiKeyAuth, async (req, res) => {
+    const docPath = (req.params as Record<string, string>)[0];
+    try {
+      const doc = await getDoc(docPath);
+      res.json(doc);
+    } catch {
+      res.status(404).json({ error: "Doc not found" });
+    }
   });
 
   // Admin key management — separate ADMIN_KEY, not mixed with client keys
